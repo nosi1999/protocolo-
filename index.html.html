@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>protocolo.ia — Claude aplicado à gestão de tráfego pago</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0B0D;
+    --bg-elevated:#131519;
+    --bg-card:#15171C;
+    --text:#F2F0EA;
+    --text-dim:#8B909A;
+    --text-faint:#565A62;
+    --accent:#1B9AD6;
+    --accent-2:#5EEAD4;
+    --border:#23262C;
+    --danger:#D9704F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Manrope',sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  a{color:inherit;text-decoration:none;}
+
+  /* subtle grid texture background */
+  body::before{
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size:64px 64px;
+    opacity:0.25;
+    pointer-events:none;
+    z-index:0;
+    mask-image:radial-gradient(ellipse 80% 50% at 50% 0%, black 40%, transparent 100%);
+  }
+
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+
+  /* NAV */
+  nav{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:28px 24px;max-width:1080px;margin:0 auto;position:relative;z-index:2;
+  }
+  .wordmark{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;letter-spacing:-0.02em;}
+  .wordmark span{color:var(--accent);}
+  .nav-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;}
+
+  /* HERO */
+  .hero{padding:60px 0 80px;position:relative;z-index:1;}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    color:var(--accent-2);letter-spacing:0.1em;text-transform:uppercase;
+    margin-bottom:24px;
+    padding:6px 12px;
+    border:1px solid rgba(94,234,212,0.25);
+    border-radius:100px;
+    background:rgba(94,234,212,0.04);
+  }
+  .eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 8px var(--accent-2);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  h1{
+    font-size:clamp(32px,5.5vw,58px);
+    font-weight:800;
+    line-height:1.06;
+    letter-spacing:-0.02em;
+    max-width:820px;
+    margin-bottom:22px;
+  }
+  h1 em{font-style:normal;color:var(--accent);}
+
+  .hero-sub{
+    font-size:18px;
+    color:var(--text-dim);
+    max-width:560px;
+    margin-bottom:40px;
+    font-weight:400;
+  }
+
+  .hero-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:56px;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .hero-grid{grid-template-columns:1fr;gap:40px;}
+  }
+
+  /* TERMINAL */
+  .terminal{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 30px 80px -20px rgba(0,0,0,0.6);
+  }
+  .terminal-bar{
+    display:flex;align-items:center;gap:8px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    background:rgba(255,255,255,0.015);
+  }
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--border);}
+  .terminal-title{
+    margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);
+  }
+  .terminal-body{
+    padding:22px 20px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    line-height:1.85;
+    min-height:280px;
+  }
+  .t-prompt{color:var(--text-dim);}
+  .t-prompt::before{content:'❯ ';color:var(--accent-2);}
+  .t-response{color:var(--text);white-space:pre-wrap;}
+  .t-label{color:var(--accent);}
+  .cursor{display:inline-block;width:7px;height:14px;background:var(--accent-2);vertical-align:middle;margin-left:2px;animation:blink 1s step-end infinite;}
+  @keyframes blink{0%,50%{opacity:1;}51%,100%{opacity:0;}}
+
+  /* FORM */
+  .form-card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:28px;
+  }
+  .form-card h3{font-size:16px;font-weight:700;margin-bottom:6px;}
+  .form-card p.desc{font-size:13.5px;color:var(--text-dim);margin-bottom:20px;}
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px 14px;
+    color:var(--text);
+    font-family:'Manrope',sans-serif;
+    font-size:14.5px;
+    outline:none;
+    transition:border-color 0.15s;
+  }
+  .field input:focus{border-color:var(--accent);}
+  .field input::placeholder{color:var(--text-faint);}
+  .btn{
+    width:100%;
+    background:var(--accent);
+    color:#04141C;
+    border:none;
+    border-radius:6px;
+    padding:14px 20px;
+    font-family:'Manrope',sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    cursor:pointer;
+    transition:transform 0.15s, box-shadow 0.15s, background 0.15s;
+    margin-top:6px;
+  }
+  .btn:hover{background:#33ABDF;box-shadow:0 8px 24px -8px rgba(27,154,214,0.5);transform:translateY(-1px);}
+  .form-foot{
+    font-size:11.5px;color:var(--text-faint);margin-top:12px;text-align:center;
+  }
+  .vagas-count{
+    display:flex;align-items:center;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);
+  }
+  .vagas-count .num{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent-2);}
+  .vagas-count .label{font-size:12px;color:var(--text-faint);}
+
+  /* SECTIONS */
+  section{padding:88px 0;position:relative;z-index:1;}
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent);
+    letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;
+  }
+  h2{
+    font-size:clamp(26px,3.5vw,38px);
+    font-weight:800;
+    letter-spacing:-0.02em;
+    max-width:640px;
+    margin-bottom:16px;
+  }
+  .section-intro{color:var(--text-dim);font-size:16px;max-width:560px;margin-bottom:48px;}
+
+  .divider{height:1px;background:var(--border);width:100%;}
+
+  /* PAIN POINTS */
+  .pains{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  @media (max-width:760px){.pains{grid-template-columns:1fr;}}
+  .pain{background:var(--bg);padding:32px 28px;}
+  .pain .tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--danger);margin-bottom:14px;}
+  .pain p{font-size:15px;color:var(--text-dim);}
+  .pain strong{color:var(--text);font-weight:700;display:block;margin-bottom:8px;font-size:15.5px;}
+
+  /* MODULES */
+  .modules{display:flex;flex-direction:column;}
+  .module{
+    display:grid;grid-template-columns:80px 1fr;gap:28px;
+    padding:32px 0;border-top:1px solid var(--border);
+  }
+  .module:last-child{border-bottom:1px solid var(--border);}
+  .mod-num{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent-2);padding-top:2px;}
+  .mod-title{font-size:19px;font-weight:700;margin-bottom:8px;}
+  .mod-desc{color:var(--text-dim);font-size:15px;max-width:520px;}
+
+  /* WHO */
+  .who-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  @media (max-width:760px){.who-grid{grid-template-columns:1fr;}}
+  .who-col{background:var(--bg);padding:32px 28px;}
+  .who-col h4{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:18px;}
+  .who-col.yes h4{color:var(--accent-2);}
+  .who-col.no h4{color:var(--text-faint);}
+  .who-col ul{list-style:none;}
+  .who-col li{font-size:14.5px;color:var(--text-dim);margin-bottom:12px;padding-left:20px;position:relative;}
+  .who-col.yes li::before{content:'✓';position:absolute;left:0;color:var(--accent-2);}
+  .who-col.no li::before{content:'×';position:absolute;left:0;color:var(--text-faint);}
+
+  /* DETAILS */
+  .details-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:56px;}
+  @media (max-width:760px){.details-grid{grid-template-columns:repeat(2,1fr);}}
+  .detail{background:var(--bg);padding:24px 20px;}
+  .detail .k{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+  .detail .v{font-size:16px;font-weight:700;}
+  .detail .v .strike{color:var(--text-faint);text-decoration:line-through;font-weight:500;font-size:13px;margin-right:6px;}
+
+  /* FINAL CTA */
+  .final-cta{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:56px 40px;
+    text-align:center;
+  }
+  @media (max-width:600px){.final-cta{padding:40px 22px;}}
+  .final-cta h2{margin:0 auto 14px;max-width:520px;}
+  .final-cta .section-intro{margin:0 auto 36px;}
+  .final-form{max-width:420px;margin:0 auto;text-align:left;}
+
+  footer{padding:40px 0 60px;text-align:center;}
+  footer p{font-size:12.5px;color:var(--text-faint);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important;animation-iteration-count:1 !important;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wordmark">protocolo<span>.ia</span></div>
+  <div class="nav-tag">by ARX Partners</div>
+</nav>
+
+<div class="wrap hero">
+  <div class="eyebrow">turma piloto · vagas limitadas</div>
+  <h1>Ensine o Claude a subir, diagnosticar e reportar suas campanhas de <em>Ads</em></h1>
+  <p class="hero-sub">Mentoria ao vivo pra gestores de tráfego e agências que querem usar IA de verdade — conectada direto no Meta Ads e no Google Ads, não só pra escrever legenda.</p>
+
+  <div class="hero-grid">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="terminal-title">claude — conectado a 1 conta</div>
+      </div>
+      <div class="terminal-body">
+<span class="t-prompt">diagnosticar "Search — Vendas Periféricos"</span>
+
+<span class="t-response"><span class="t-label">Claude:</span> encontrei o problema. Purchase
+não dispara há 12 dias — 2 causas prováveis:
+
+  1. tag do Google Ads sem o evento de conversão
+     configurado no Shopify
+  2. checkbox de "código externo" desmarcado
+     no admin da loja
+
+quer que eu gere o passo a passo de correção?</span>
+
+<span class="t-prompt">sim, e sobe uma campanha de remarketing</span><span class="cursor"></span>
+      </div>
+    </div>
+
+    <div class="form-card" id="form-hero">
+      <h3>Entrar na lista de espera</h3>
+      <p class="desc">8 vagas na turma piloto. Preço de fundador pra quem confirmar cedo.</p>
+      <div class="field">
+        <label for="nome-hero">Nome</label>
+        <input type="text" id="nome-hero" placeholder="Seu nome">
+      </div>
+      <div class="field">
+        <label for="whats-hero">WhatsApp</label>
+        <input type="tel" id="whats-hero" placeholder="(62) 9xxxx-xxxx">
+      </div>
+      <button class="btn" onclick="submitForm('hero')">Quero minha vaga →</button>
+      <div class="vagas-count">
+        <span class="num">8</span>
+        <span class="label">vagas na turma piloto · sem mensalidade, é mentoria única</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap"><div class="divider"></div></div>
+
+<section>
+  <div class="wrap">
+    <div class="section-label">o problema</div>
+    <h2>A parte chata da gestão de tráfego continua manual</h2>
+    <p class="section-intro">Enquanto todo mundo usa IA pra escrever copy, a parte que mais consome tempo — setup, diagnóstico e relatório — continua sendo feita na mão, campanha por campanha.</p>
+
+    <div class="pains">
+      <div class="pain">
+        <div class="tag mono">01 — SETUP</div>
+        <strong>Configuração que deveria levar 10 minutos leva a tarde inteira</strong>
+        <p>Estrutura de campanha, grupos de anúncio, públicos — tudo replicado manualmente conta por conta.</p>
+      </div>
+      <div class="pain">
+        <div class="tag mono">02 — DIAGNÓSTICO</div>
+        <strong>Erro de pixel ou conversão que devia ser instantâneo vira caça ao tesouro</strong>
+        <p>Horas revisando Tag Assistant, GTM e Events Manager pra achar um checkbox desmarcado.</p>
+      </div>
+      <div class="pain">
+        <div class="tag mono">03 — RELATÓRIO</div>
+        <strong>Report de performance feito na unha, todo mês, pra cada cliente</strong>
+        <p>Exportar planilha, montar gráfico, escrever análise — tempo que devia ir pra estratégia.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-label">o que você vai aprender</div>
+    <h2>Um protocolo real, testado em contas de verdade</h2>
+    <p class="section-intro">Não é teoria de prompt engineering. É a sequência exata que uso hoje pra gerenciar campanhas de clientes de agência.</p>
+
+    <div class="modules">
+      <div class="module">
+        <div class="mod-num">01</div>
+        <div>
+          <div class="mod-title">Conectar o Claude nas suas contas</div>
+          <div class="mod-desc">Autenticação, permissões e estrutura de acesso ao Meta Ads e Google Ads — sem expor credenciais, sem gambiarra.</div>
+        </div>
+      </div>
+      <div class="module">
+        <div class="mod-num">02</div>
+        <div>
+          <div class="mod-title">Extrair dados e diagnosticar com IA</div>
+          <div class="mod-desc">Puxar performance de qualquer conta e deixar o Claude apontar onde está o problema — pixel, conversão, público, criativo.</div>
+        </div>
+      </div>
+      <div class="module">
+        <div class="mod-num">03</div>
+        <div>
+          <div class="mod-title">Criar campanhas com o Claude como copiloto</div>
+          <div class="mod-desc">Estrutura de campanha, segmentação e copy gerados e revisados junto com a IA — você aprova, a IA executa.</div>
+        </div>
+      </div>
+      <div class="module">
+        <div class="mod-num">04</div>
+        <div>
+          <div class="mod-title">Automatizar relatório e otimização</div>
+          <div class="mod-desc">Relatórios recorrentes e alertas de otimização gerados automaticamente, sem abrir planilha.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-label">pra quem é</div>
+    <h2>Essa mentoria não é pra todo mundo</h2>
+
+    <div class="who-grid">
+      <div class="who-col yes">
+        <h4>faz sentido se você</h4>
+        <ul>
+          <li>já roda campanhas de Meta Ads ou Google Ads, mesmo que iniciante</li>
+          <li>é gestor de tráfego, freelancer ou dono de agência pequena</li>
+          <li>quer atender mais contas sem contratar</li>
+          <li>topa aprender fazendo, com feedback ao vivo</li>
+        </ul>
+      </div>
+      <div class="who-col no">
+        <h4>não é pra você se</h4>
+        <ul>
+          <li>nunca configurou uma campanha de Ads</li>
+          <li>procura curso gravado, sem interação</li>
+          <li>quer alguém rodando a conta por você</li>
+          <li>está buscando fórmula mágica sem prática</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="section-label">detalhes</div>
+    <h2>Turma piloto — condição única</h2>
+
+    <div class="details-grid">
+      <div class="detail">
+        <div class="k mono">Formato</div>
+        <div class="v">Ao vivo, online</div>
+      </div>
+      <div class="detail">
+        <div class="k mono">Encontros</div>
+        <div class="v">4 sessões</div>
+      </div>
+      <div class="detail">
+        <div class="k mono">Turma</div>
+        <div class="v">Máx. 8 pessoas</div>
+      </div>
+      <div class="detail">
+        <div class="k mono">Investimento</div>
+        <div class="v"><span class="strike">R$697</span>R$497</div>
+      </div>
+    </div>
+
+    <div class="final-cta">
+      <div class="section-label" style="justify-content:center;display:flex;">entrar na lista</div>
+      <h2>Garanta sua vaga na turma piloto</h2>
+      <p class="section-intro">Data confirmada assim que as 8 vagas fecharem. Preço de fundador só pra quem entrar na lista agora.</p>
+
+      <div class="final-form">
+        <div class="field">
+          <label for="nome-final">Nome</label>
+          <input type="text" id="nome-final" placeholder="Seu nome">
+        </div>
+        <div class="field">
+          <label for="whats-final">WhatsApp</label>
+          <input type="tel" id="whats-final" placeholder="(62) 984954661">
+        </div>
+        <button class="btn" onclick="submitForm('final')">Quero minha vaga →</button>
+        <p class="form-foot">Você será direcionado ao WhatsApp pra confirmar a vaga.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>protocolo.ia — um projeto ARX Partners · Goiânia, GO</p>
+  </div>
+</footer>
+
+<script>
+  // EDITE AQUI: número de WhatsApp que vai receber os leads (formato: 55 + DDD + número)
+  const WHATSAPP_NUMBER = "62984954661";
+
+  function submitForm(origin){
+    const nome = document.getElementById('nome-' + origin).value.trim();
+    const whats = document.getElementById('whats-' + origin).value.trim();
+
+    if(!nome || !whats){
+      alert('Preenche nome e WhatsApp pra entrar na lista.');
+      return;
+    }
+
+    const msg = `Olá! Quero entrar na lista de espera do protocolo.ia (mentoria de IA + gestão de tráfego).\n\nNome: ${nome}\nWhatsApp: ${whats}`;
+    const url = `https://wa.me/${62984954661}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  }
+</script>
+
+</body>
+</html>
